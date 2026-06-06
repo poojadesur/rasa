@@ -84,6 +84,16 @@
 
   <!-- DEBRIEF -->
   <section id="tab-debrief" class="hidden">
+    <div id="avatarWrap" class="hidden" style="margin-bottom:14px">
+      <div style="position:relative;border-radius:14px;overflow:hidden;background:#111">
+        <video id="avatarVideo" autoplay playsinline style="width:100%;display:block;max-height:420px;object-fit:cover"></video>
+        <audio id="avatarAudio" autoplay></audio>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button id="micToggle" class="btn" style="flex:1;padding:12px">🎤 Speak</button>
+        <button id="endCall" class="btn" style="flex:1;padding:12px;background:#ff4d4f">End</button>
+      </div>
+    </div>
     <div id="debriefBox" class="card center muted">
       Generate a personalized recap of your emotional day.
     </div>
@@ -247,6 +257,38 @@ function sparkline(series){
 }
 
 // ---- debrief ----
+let dailyCall=null, localAudioOn=true;
+
+async function loadDailySDK(){
+  if(window.DailyIframe) return;
+  await new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://unpkg.com/@daily-co/daily-js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+}
+
+async function startAvatarCall(url){
+  await loadDailySDK();
+  if(dailyCall){ await dailyCall.leave(); dailyCall.destroy(); dailyCall=null; }
+  document.getElementById('avatarWrap').classList.remove('hidden');
+  localAudioOn=true;
+  document.getElementById('micToggle').textContent='🎤 Speak';
+  dailyCall=window.DailyIframe.createCallObject();
+  dailyCall.on('track-started',({participant,track})=>{
+    if(participant.local) return;
+    if(track.kind==='video'){ const v=document.getElementById('avatarVideo'); v.srcObject=new MediaStream([track]); }
+    else if(track.kind==='audio'){ const a=document.getElementById('avatarAudio'); a.srcObject=new MediaStream([track]); }
+  });
+  await dailyCall.join({url, startVideoOff:true});
+  document.getElementById('micToggle').onclick=()=>{
+    localAudioOn=!localAudioOn;
+    dailyCall.setLocalAudio(localAudioOn);
+    document.getElementById('micToggle').textContent=localAudioOn?'🎤 Speak':'🔇 Muted';
+  };
+  document.getElementById('endCall').onclick=async()=>{
+    await dailyCall.leave(); dailyCall.destroy(); dailyCall=null;
+    document.getElementById('avatarWrap').classList.add('hidden');
+    document.getElementById('avatarVideo').srcObject=null;
+  };
+}
+
 document.getElementById('debriefBtn').onclick=async()=>{
   const btn=document.getElementById('debriefBtn'), box=document.getElementById('debriefBox');
   btn.disabled=true; btn.textContent='Writing your script…';
@@ -254,19 +296,20 @@ document.getElementById('debriefBtn').onclick=async()=>{
     const start=await fetch(API+'/debrief/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:USER})}).then(r=>r.json());
     for(let i=0;i<80;i++){
       const d=await fetch(API+'/debrief/'+start.debrief_id).then(r=>r.json());
-      btn.textContent={scripting:'Writing your script…',rendering:'Rendering your video…'}[d.status]||'Working…';
+      btn.textContent={scripting:'Writing your script…',rendering:'Connecting to your avatar…'}[d.status]||'Working…';
       if(d.status==='ready'||d.status==='error'){ renderDebrief(d); break; }
       await new Promise(r=>setTimeout(r,2500));
     }
   }catch(e){ box.innerHTML='<div class="muted">Couldn\'t generate. Is the backend running?</div>'; box.className='card muted center'; }
   btn.disabled=false; btn.textContent='Regenerate debrief';
 };
+
 function renderDebrief(d){
   const box=document.getElementById('debriefBox'); box.className='card';
   let html='';
-  if(d.video_url){ const v=d.video_url.startsWith('http')?d.video_url:API+d.video_url; html+=`<video controls src="${v}"></video>`; }
-  if(d.script) html+=`<h2>Today's debrief</h2><div class="script">${d.script}</div>`;
-  if(!d.video_url && d.status==='ready') html+=`<div class="muted" style="margin-top:8px;font-size:12px">Script ready — add Tavus credits for the video.</div>`;
+  if(d.conversation_url){ startAvatarCall(d.conversation_url); html+='<div class="muted center" style="font-size:13px">Avatar connecting…</div>'; }
+  if(d.script) html+=`<h2 style="margin-top:${d.conversation_url?'12px':'0'}">Today\'s debrief</h2><div class="script">${d.script}</div>`;
+  if(!d.conversation_url && d.status==='ready') html+='<div class="muted" style="margin-top:8px;font-size:12px">Script ready — add a Tavus API key for the live avatar.</div>';
   if(d.status==='error') html+=`<div class="muted" style="color:#ff6b6b">${d.error||'error'}</div>`;
   box.innerHTML=html;
 }

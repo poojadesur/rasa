@@ -1,8 +1,7 @@
 """End-of-day debrief: gather snapshots → script (Gemini/stub or override) →
-Tavus video (independent). Falls back to a script-only debrief if Tavus is unset."""
+Tavus CVI conversation. Falls back to a script-only debrief if Tavus is unset."""
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Optional
 
@@ -10,7 +9,7 @@ from ..config import get_settings
 from ..deps import now_iso, store
 from ..models import Debrief
 from ..services.script.base import get_script_generator
-from ..services.tavus_client import create_video_from_script, get_video
+from ..services.tavus_client import create_cvi_conversation
 
 log = logging.getLogger("rasa.debrief")
 
@@ -54,35 +53,17 @@ async def generate_debrief(
         await _save(deb, status="error", error=str(exc))
         return deb
 
-    # 2. Tavus video — best-effort. Any failure degrades to a script-only debrief
-    #    (status stays "ready") so the demo never breaks; the reason is kept in `error`.
+    # 2. Tavus CVI — best-effort. Any failure degrades to a script-only debrief.
     if not s.tavus_api_key:
         await _save(deb, status="ready")
         return deb
 
     try:
         await _save(deb, status="rendering")
-        created = await create_video_from_script(script, f"Rasa debrief {date}")
-        video_id = created.get("video_id")
-        await _save(deb, share_url=created.get("hosted_url"))
-
-        for _ in range(POLL_MAX_TRIES):
-            await asyncio.sleep(POLL_INTERVAL_S)
-            v = await get_video(video_id)
-            status = v.get("status")
-            if status == "ready":
-                await _save(
-                    deb,
-                    status="ready",
-                    video_url=v.get("download_url") or v.get("stream_url") or v.get("hosted_url"),
-                    share_url=v.get("hosted_url") or deb.share_url,
-                )
-                return deb
-            if status == "error":
-                raise RuntimeError(f"Tavus returned error for video {video_id}")
-
-        await _save(deb, status="ready", error="tavus_render_timeout")  # script-only
+        result = await create_cvi_conversation(script, f"Rasa debrief {date}")
+        conversation_url = result.get("conversation_url")
+        await _save(deb, status="ready", conversation_url=conversation_url)
     except Exception as exc:  # noqa: BLE001
         log.warning("debrief %s: Tavus unavailable, falling back to script-only (%s)", debrief_id, exc)
-        await _save(deb, status="ready", error=f"video_unavailable: {exc}")
+        await _save(deb, status="ready", error=f"avatar_unavailable: {exc}")
     return deb
