@@ -42,6 +42,13 @@
   .toggle { display:flex; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:14px; margin:10px 0; }
   .toggle input { width:42px; height:24px; }
   .status { min-height:20px; color:var(--muted); font-size:13px; text-align:center; margin:8px 0; }
+
+  /* ---- live audio meter (Siri-style) ---- */
+  .meter { display:none; align-items:center; justify-content:center; gap:3px; height:56px; margin:14px 0 2px; }
+  .meter.on { display:flex; }
+  .meter span { width:4px; height:4px; min-height:4px; border-radius:999px;
+                background:linear-gradient(180deg,#cdb9ff,var(--accent)); will-change:height;
+                transition:height .08s cubic-bezier(.2,.8,.2,1); }
   nav { position:fixed; bottom:0; left:0; right:0; background:#15171d; border-top:1px solid #2a2d35; display:flex; }
   nav button { flex:1; background:none; color:var(--muted); padding:10px 0 26px; font-size:11px; display:flex; flex-direction:column; align-items:center; gap:3px; }
   nav button.active { color:var(--accent); }
@@ -120,6 +127,7 @@
       <div class="muted" id="recHint">Tap and tell me how it's going. A few seconds is plenty.</div>
       <label class="toggle"><input type="checkbox" id="longSession"> Long session (full conversation)</label>
       <div class="mic" id="micBtn">🎙️</div>
+      <div class="meter" id="meter" aria-hidden="true"></div>
       <div class="status" id="recStatus">&nbsp;</div>
     </div>
     <div id="lastCard"></div>
@@ -231,6 +239,44 @@ function toggleKudos(btn){
 let mediaRecorder, chunks=[], recording=false;
 const micBtn=document.getElementById('micBtn'), recStatus=document.getElementById('recStatus');
 
+// ---- live audio meter (real loudness → Siri-style bars) ----
+const meterEl=document.getElementById('meter');
+const BAR_COUNT=28, CENTER=(BAR_COUNT-1)/2;
+const bars=Array.from({length:BAR_COUNT},()=>{ const s=document.createElement('span'); meterEl.appendChild(s); return s; });
+let audioCtx=null, analyser=null, freqData=null, meterRAF=null;
+
+function startMeter(stream){
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    audioCtx=new Ctx();
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=128;              // 64 frequency bins
+    analyser.smoothingTimeConstant=0.78;
+    audioCtx.createMediaStreamSource(stream).connect(analyser);
+    freqData=new Uint8Array(analyser.frequencyBinCount);
+    meterEl.classList.add('on');
+    drawMeter();
+  }catch(e){ /* meter is decorative — never block recording */ }
+}
+function drawMeter(){
+  analyser.getByteFrequencyData(freqData);
+  for(let i=0;i<BAR_COUNT;i++){
+    // mirror around the center: middle bars track the loud low/mid band, edges the highs
+    const dist=Math.abs(i-CENTER)/(CENTER||1);
+    const bin=Math.min(freqData.length-1, Math.floor(dist*freqData.length*0.7));
+    const v=freqData[bin]/255;                 // 0..1 loudness for this band
+    const h=4 + v*v*46 * (1 - dist*0.35);      // emphasise the centre, ease toward edges
+    bars[i].style.height=h.toFixed(1)+'px';
+  }
+  meterRAF=requestAnimationFrame(drawMeter);
+}
+function stopMeter(){
+  if(meterRAF){ cancelAnimationFrame(meterRAF); meterRAF=null; }
+  meterEl.classList.remove('on');
+  bars.forEach(b=>b.style.height='4px');
+  if(audioCtx){ audioCtx.close().catch(()=>{}); audioCtx=null; analyser=null; }
+}
+
 micBtn.onclick=async()=>{
   if(recording){ mediaRecorder.stop(); return; }
   try{
@@ -240,6 +286,7 @@ micBtn.onclick=async()=>{
     chunks=[];
     mediaRecorder.ondataavailable=e=>chunks.push(e.data);
     mediaRecorder.onstop=async()=>{
+      stopMeter();
       stream.getTracks().forEach(t=>t.stop());
       micBtn.classList.remove('recording'); recording=false; micBtn.textContent='🎙️';
       const type=mediaRecorder.mimeType||'audio/webm';
@@ -250,6 +297,7 @@ micBtn.onclick=async()=>{
     mediaRecorder.start();
     recording=true; micBtn.classList.add('recording'); micBtn.textContent='⏹';
     recStatus.textContent='Listening…';
+    startMeter(stream);
   }catch(err){ recStatus.textContent='Microphone blocked. Allow mic access.'; }
 };
 
