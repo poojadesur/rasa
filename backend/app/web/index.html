@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Rasa — Strava for Emotions</title>
+<style>
+  :root { --bg:#0e0f13; --card:#1a1c22; --card2:#23262e; --text:#f2f3f5; --muted:#9aa0ab; --accent:#7c5cff; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:480px; margin:0 auto; padding:16px 16px 96px; }
+  h1 { font-size:22px; margin:6px 0 2px; letter-spacing:.3px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:18px; }
+  .card { background:var(--card); border-radius:18px; padding:16px; margin-bottom:14px; }
+  .card h2 { font-size:15px; margin:0 0 12px; }
+  .muted { color:var(--muted); }
+  .center { text-align:center; }
+  button { font:inherit; border:none; border-radius:14px; cursor:pointer; }
+  .mic { width:104px; height:104px; border-radius:50%; background:var(--accent); color:#fff; font-size:34px;
+         display:flex; align-items:center; justify-content:center; margin:8px auto; box-shadow:0 8px 30px rgba(124,92,255,.4); transition:transform .1s, background .2s; }
+  .mic:active { transform:scale(.95); }
+  .mic.recording { background:#ff4d4f; box-shadow:0 8px 30px rgba(255,77,79,.4); }
+  .pill { display:inline-flex; align-items:center; gap:6px; background:var(--card2); border-radius:999px; padding:5px 10px; font-size:12px; margin:3px 4px 3px 0; }
+  .bar { height:9px; border-radius:999px; background:#2c2f38; overflow:hidden; }
+  .bar > div { height:100%; border-radius:999px; }
+  .row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #2a2d35; }
+  .row:last-child { border-bottom:none; }
+  .emoji { font-size:26px; }
+  .grow { flex:1; min-width:0; }
+  .title { font-weight:600; }
+  .time { color:var(--muted); font-size:12px; }
+  .dot { width:13px; height:13px; border-radius:50%; flex:none; }
+  .tiles { display:flex; gap:10px; }
+  .tile { flex:1; background:var(--card2); border-radius:14px; padding:12px; text-align:center; }
+  .tile .v { font-size:20px; font-weight:700; }
+  .tile .t { font-size:11px; color:var(--muted); }
+  .heat { display:flex; gap:3px; }
+  .heat > div { flex:1; height:30px; border-radius:4px; background:#2c2f38; }
+  .heatlabels { display:flex; justify-content:space-between; color:var(--muted); font-size:9px; margin-top:4px; }
+  .btn { display:block; width:100%; padding:15px; background:var(--accent); color:#fff; font-weight:600; border-radius:14px; }
+  .btn:disabled { opacity:.6; }
+  .toggle { display:flex; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:14px; margin:10px 0; }
+  .toggle input { width:42px; height:24px; }
+  .status { min-height:20px; color:var(--muted); font-size:13px; text-align:center; margin:8px 0; }
+  nav { position:fixed; bottom:0; left:0; right:0; background:#15171d; border-top:1px solid #2a2d35; display:flex; }
+  nav button { flex:1; background:none; color:var(--muted); padding:10px 0 26px; font-size:11px; display:flex; flex-direction:column; align-items:center; gap:3px; }
+  nav button.active { color:var(--accent); }
+  nav .ico { font-size:20px; }
+  .hidden { display:none; }
+  svg { width:100%; height:140px; }
+  video { width:100%; border-radius:14px; background:#000; }
+  .script { white-space:pre-wrap; line-height:1.5; }
+  .scroll-x { overflow-x:auto; white-space:nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎭 Rasa</h1>
+  <div class="sub">Strava for emotions — your voice, your feelings, your day.</div>
+
+  <!-- CHECK IN -->
+  <section id="tab-checkin">
+    <div class="card center">
+      <div class="muted" id="recHint">Tap and tell me how it's going. A few seconds is plenty.</div>
+      <label class="toggle"><input type="checkbox" id="longSession"> Long session (full conversation)</label>
+      <div class="mic" id="micBtn">🎙️</div>
+      <div class="status" id="recStatus">&nbsp;</div>
+    </div>
+    <div id="lastCard"></div>
+  </section>
+
+  <!-- TIMELINE -->
+  <section id="tab-timeline" class="hidden">
+    <div class="card">
+      <h2 id="tlHead">Today's moments</h2>
+      <div id="timeline"><div class="muted">No moments yet. Record a check-in.</div></div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section id="tab-stats" class="hidden">
+    <div id="stats"><div class="card muted">Log a few check-ins to build your report.</div></div>
+  </section>
+
+  <!-- DEBRIEF -->
+  <section id="tab-debrief" class="hidden">
+    <div id="debriefBox" class="card center muted">
+      Generate a personalized recap of your emotional day.
+    </div>
+    <button class="btn" id="debriefBtn">Generate today's debrief</button>
+  </section>
+</div>
+
+<nav>
+  <button data-tab="checkin" class="active"><span class="ico">🎙️</span>Check in</button>
+  <button data-tab="timeline"><span class="ico">📜</span>Timeline</button>
+  <button data-tab="stats"><span class="ico">📊</span>Stats</button>
+  <button data-tab="debrief"><span class="ico">🎬</span>Debrief</button>
+</nav>
+
+<script>
+const USER = "demo-user";
+const API = ""; // same origin as this page
+
+function valColor(v){ const t=Math.max(0,Math.min(1,(v+1)/2)); const hue=t*120; return `hsl(${hue} 70% 55%)`; }
+function emoji(label){
+  const l=(label||"").toLowerCase();
+  if(/joy|ecsta|amus/.test(l))return"😄"; if(/satisf|content|calm|relief/.test(l))return"🙂";
+  if(/excit|triumph|pride/.test(l))return"🤩"; if(/love|ador|romance/.test(l))return"🥰";
+  if(/sad|disappoint|grief/.test(l))return"😔"; if(/anx|fear|distress|horror/.test(l))return"😰";
+  if(/anger|contempt|disgust/.test(l))return"😠"; if(/tired|bored/.test(l))return"😴";
+  if(/pain|suffer/.test(l))return"😣"; return"🎭";
+}
+function hm(ts){ const d=new Date(ts); return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); }
+
+// ---- tabs ----
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  ['checkin','timeline','stats','debrief'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
+  document.getElementById('tab-'+b.dataset.tab).classList.remove('hidden');
+  if(b.dataset.tab==='timeline') loadTimeline();
+  if(b.dataset.tab==='stats') loadStats();
+});
+
+// ---- recording ----
+let mediaRecorder, chunks=[], recording=false;
+const micBtn=document.getElementById('micBtn'), recStatus=document.getElementById('recStatus');
+
+micBtn.onclick=async()=>{
+  if(recording){ mediaRecorder.stop(); return; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    mediaRecorder=new MediaRecorder(stream, mime?{mimeType:mime}:undefined);
+    chunks=[];
+    mediaRecorder.ondataavailable=e=>chunks.push(e.data);
+    mediaRecorder.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      micBtn.classList.remove('recording'); recording=false; micBtn.textContent='🎙️';
+      const type=mediaRecorder.mimeType||'audio/webm';
+      const ext=type.includes('mp4')?'mp4':type.includes('ogg')?'ogg':'webm';
+      const blob=new Blob(chunks,{type});
+      await upload(blob, ext);
+    };
+    mediaRecorder.start();
+    recording=true; micBtn.classList.add('recording'); micBtn.textContent='⏹';
+    recStatus.textContent='Listening…';
+  }catch(err){ recStatus.textContent='Microphone blocked. Allow mic access.'; }
+};
+
+async function upload(blob, ext){
+  const fd=new FormData();
+  fd.append('user_id', USER);
+  fd.append('file', blob, 'clip.'+ext);
+  const long=document.getElementById('longSession').checked;
+  try{
+    if(long){
+      recStatus.textContent='Uploading conversation…';
+      const r=await fetch(API+'/recordings',{method:'POST',body:fd}).then(r=>r.json());
+      await pollRecording(r.recording_id);
+      recStatus.textContent='Added to your timeline.';
+    }else{
+      recStatus.textContent='Reading the room…';
+      const snap=await fetch(API+'/checkins',{method:'POST',body:fd}).then(r=>r.json());
+      renderLastCard(snap);
+      recStatus.textContent='';
+    }
+  }catch(e){ recStatus.textContent='Upload failed — is the backend running?'; }
+}
+
+async function pollRecording(id){
+  for(let i=0;i<60;i++){
+    const rec=await fetch(API+'/recordings/'+id).then(r=>r.json());
+    recStatus.textContent=`Analyzing ${rec.chunks_done}/${rec.chunk_count||1} segments…`;
+    if(rec.status==='ready'||rec.status==='error') return;
+    await new Promise(r=>setTimeout(r,2000));
+  }
+}
+
+function card(snap){
+  const top=(snap.top_emotions||[]).slice(0,4).map(e=>`<span class="pill">${e.name} ${Math.round(e.score*100)}%</span>`).join('');
+  return `<div class="card">
+    <div class="row" style="border:none;padding-bottom:6px">
+      <div class="emoji">${emoji(snap.emotion_label)}</div>
+      <div class="grow"><div class="title">${snap.emotion_label}</div><div class="time">${hm(snap.timestamp)}</div></div>
+      <div class="dot" style="background:${valColor(snap.valence)}"></div>
+    </div>
+    <div class="bar"><div style="width:${(snap.valence+1)/2*100}%;background:${valColor(snap.valence)}"></div></div>
+    <div style="margin-top:10px" class="scroll-x">${top}</div>
+    ${snap.summary?`<div class="muted" style="margin-top:8px;font-size:13px">${snap.summary}</div>`:''}
+  </div>`;
+}
+function renderLastCard(snap){ document.getElementById('lastCard').innerHTML=card(snap); }
+
+// ---- timeline ----
+async function loadTimeline(){
+  try{
+    const snaps=await fetch(API+'/checkins?user_id='+USER).then(r=>r.json());
+    document.getElementById('tlHead').textContent=`${snaps.length} moments today`;
+    const el=document.getElementById('timeline');
+    if(!snaps.length){ el.innerHTML='<div class="muted">No moments yet. Record a check-in.</div>'; return; }
+    snaps.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
+    el.innerHTML=snaps.map(s=>`<div class="row">
+      <div class="emoji">${emoji(s.emotion_label)}</div>
+      <div class="grow"><div class="title">${s.emotion_label}</div><div class="time">${s.summary||s.context_tag}</div></div>
+      <div class="time">${hm(s.timestamp)}</div>
+      <div class="dot" style="background:${valColor(s.valence)}"></div>
+    </div>`).join('');
+  }catch(e){ document.getElementById('timeline').innerHTML='<div class="muted">Backend unreachable.</div>'; }
+}
+
+// ---- stats ----
+async function loadStats(){
+  const box=document.getElementById('stats');
+  try{
+    const d=await fetch(API+'/dashboard?user_id='+USER).then(r=>r.json());
+    if(!d.checkin_count){ box.innerHTML='<div class="card muted">Log a few check-ins to build your report.</div>'; return; }
+    const heat=d.heatmap.map(b=>`<div title="${b.hour}:00" style="background:${b.count?valColor(b.avg_valence):'#2c2f38'}"></div>`).join('');
+    const trig=d.top_triggers.length?d.top_triggers.map(t=>`<div class="row"><div class="grow">${t.context_tag}</div><div class="time">${t.count}×</div><div class="dot" style="background:${valColor(t.avg_valence)}"></div></div>`).join(''):'<div class="muted">No clear patterns yet.</div>';
+    const labels=d.labels_breakdown.map(l=>`<span class="pill">${emoji(l.label)} ${l.label} ×${l.count}</span>`).join('');
+    box.innerHTML=`
+      <div class="card"><div class="tiles">
+        <div class="tile"><div class="v">🔥 ${d.streak_days}</div><div class="t">Day streak</div></div>
+        <div class="tile"><div class="v">${d.checkin_count}</div><div class="t">Moments</div></div>
+        <div class="tile"><div class="v">${d.avg_valence>=0?'+':''}${d.avg_valence.toFixed(2)}</div><div class="t">Avg mood</div></div>
+      </div></div>
+      <div class="card"><h2>Mood through the day</h2>${sparkline(d.series)}</div>
+      <div class="card"><h2>Emotional heatmap</h2><div class="heat">${heat}</div>
+        <div class="heatlabels"><span>12a</span><span>12p</span><span>11p</span></div></div>
+      <div class="card"><h2>What moved you</h2>${trig}</div>
+      <div class="card"><h2>Feelings logged</h2><div class="scroll-x">${labels}</div></div>`;
+  }catch(e){ box.innerHTML='<div class="card muted">Backend unreachable.</div>'; }
+}
+
+function sparkline(series){
+  if(!series.length) return '<div class="muted">Not enough data.</div>';
+  const W=440,H=140,pad=10;
+  const xs=series.map((_,i)=>pad+(series.length<2?W/2:(i/(series.length-1))*(W-2*pad)));
+  const ys=series.map(p=>H-pad-((p.valence+1)/2)*(H-2*pad));
+  const pts=xs.map((x,i)=>`${x},${ys[i]}`).join(' ');
+  const dots=series.map((p,i)=>`<circle cx="${xs[i]}" cy="${ys[i]}" r="4" fill="${valColor(p.valence)}"/>`).join('');
+  const mid=H-pad-0.5*(H-2*pad);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <line x1="${pad}" y1="${mid}" x2="${W-pad}" y2="${mid}" stroke="#3a3d45" stroke-dasharray="4"/>
+    <polyline points="${pts}" fill="none" stroke="#7c5cff" stroke-width="2.5"/>${dots}</svg>`;
+}
+
+// ---- debrief ----
+document.getElementById('debriefBtn').onclick=async()=>{
+  const btn=document.getElementById('debriefBtn'), box=document.getElementById('debriefBox');
+  btn.disabled=true; btn.textContent='Writing your script…';
+  try{
+    const start=await fetch(API+'/debrief/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:USER})}).then(r=>r.json());
+    for(let i=0;i<80;i++){
+      const d=await fetch(API+'/debrief/'+start.debrief_id).then(r=>r.json());
+      btn.textContent={scripting:'Writing your script…',rendering:'Rendering your video…'}[d.status]||'Working…';
+      if(d.status==='ready'||d.status==='error'){ renderDebrief(d); break; }
+      await new Promise(r=>setTimeout(r,2500));
+    }
+  }catch(e){ box.innerHTML='<div class="muted">Couldn\'t generate. Is the backend running?</div>'; box.className='card muted center'; }
+  btn.disabled=false; btn.textContent='Regenerate debrief';
+};
+function renderDebrief(d){
+  const box=document.getElementById('debriefBox'); box.className='card';
+  let html='';
+  if(d.video_url){ const v=d.video_url.startsWith('http')?d.video_url:API+d.video_url; html+=`<video controls src="${v}"></video>`; }
+  if(d.script) html+=`<h2>Today's debrief</h2><div class="script">${d.script}</div>`;
+  if(!d.video_url && d.status==='ready') html+=`<div class="muted" style="margin-top:8px;font-size:12px">Script ready — add Tavus credits for the video.</div>`;
+  if(d.status==='error') html+=`<div class="muted" style="color:#ff6b6b">${d.error||'error'}</div>`;
+  box.innerHTML=html;
+}
+</script>
+</body>
+</html>

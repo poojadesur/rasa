@@ -1,0 +1,29 @@
+name: Rasa
+options:
+  bundleIdPrefix: com.rasa
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+targets:
+  Rasa:
+    type: application
+    platform: iOS
+    sources:
+      - path: Rasa
+    info:
+      path: Rasa/Info.plist
+      properties:
+        CFBundleDisplayName: Rasa
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        NSMicrophoneUsageDescription: "Rasa records short voice check-ins to track how you're feeling."
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rasa.app
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.9"

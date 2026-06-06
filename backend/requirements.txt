@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic>=2
+pydantic-settings
+redis>=5
+httpx
+hume
+google-genai
+pydub
+python-dotenv
