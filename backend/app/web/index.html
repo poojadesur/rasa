@@ -99,6 +99,14 @@
                    background:radial-gradient(circle at 35% 30%, #b6a2ff, #6b4cff); box-shadow:0 0 26px rgba(124,92,255,.5); }
   .breathe .ball.run { animation:boxbreath 16s ease-in-out infinite; }
   @keyframes boxbreath { 0%{transform:scale(.62)} 25%{transform:scale(1)} 50%{transform:scale(1)} 75%{transform:scale(.62)} 100%{transform:scale(.62)} }
+  .mic { position:relative; }
+  .mic.processing { background:var(--card2); box-shadow:none; pointer-events:none; }
+  .mic.processing::after { content:''; position:absolute; inset:-6px; border-radius:50%; border:3px solid transparent; border-top-color:var(--accent); animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .ldots span { animation:ldot 1.2s ease-in-out infinite; display:inline-block; opacity:0; }
+  .ldots span:nth-child(2){ animation-delay:.2s; }
+  .ldots span:nth-child(3){ animation-delay:.4s; }
+  @keyframes ldot { 0%,80%,100%{opacity:0} 40%{opacity:1} }
 </style>
 </head>
 <body>
@@ -245,6 +253,14 @@ micBtn.onclick=async()=>{
   }catch(err){ recStatus.textContent='Microphone blocked. Allow mic access.'; }
 };
 
+function setProcessing(msg){
+  micBtn.classList.add('processing'); micBtn.textContent='⏳';
+  recStatus.innerHTML=`${msg} <span class="ldots"><span>·</span><span>·</span><span>·</span></span>`;
+}
+function clearProcessing(){
+  micBtn.classList.remove('processing'); micBtn.textContent='🎙️';
+}
+
 async function upload(blob, ext){
   const fd=new FormData();
   fd.append('user_id', USER);
@@ -252,23 +268,22 @@ async function upload(blob, ext){
   const long=document.getElementById('longSession').checked;
   try{
     if(long){
-      recStatus.textContent='Uploading conversation…';
+      setProcessing('Uploading conversation');
       const r=await fetch(API+'/recordings',{method:'POST',body:fd}).then(r=>r.json());
       await pollRecording(r.recording_id);
-      recStatus.textContent='Added to your timeline.';
+      clearProcessing(); recStatus.textContent='Added to your timeline.';
     }else{
-      recStatus.textContent='Reading the room…';
+      setProcessing('Reading the room');
       const snap=await fetch(API+'/checkins',{method:'POST',body:fd}).then(r=>r.json());
-      renderLastCard(snap);
-      recStatus.textContent='';
+      clearProcessing(); renderLastCard(snap); recStatus.textContent='';
     }
-  }catch(e){ recStatus.textContent='Upload failed — is the backend running?'; }
+  }catch(e){ clearProcessing(); recStatus.textContent='Upload failed — is the backend running?'; }
 }
 
 async function pollRecording(id){
   for(let i=0;i<60;i++){
     const rec=await fetch(API+'/recordings/'+id).then(r=>r.json());
-    recStatus.textContent=`Analyzing ${rec.chunks_done}/${rec.chunk_count||1} segments…`;
+    setProcessing(`Analyzing ${rec.chunks_done}/${rec.chunk_count||1} segments`);
     if(rec.status==='ready'||rec.status==='error') return;
     await new Promise(r=>setTimeout(r,2000));
   }
