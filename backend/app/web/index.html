@@ -57,6 +57,48 @@
   .kudos.on { color:var(--accent); }
   .friendfeel { display:flex; align-items:center; gap:10px; margin:12px 0 10px; }
   .cardfoot { display:flex; align-items:center; justify-content:space-between; border-top:1px solid #2a2d35; padding-top:10px; }
+
+  /* ---- global polish ---- */
+  body { background:radial-gradient(1200px 620px at 50% -12%, #1a1c2b 0%, var(--bg) 55%) fixed; }
+  h1 { background:linear-gradient(90deg,#ffffff,#b9a7ff); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
+  .card { border:1px solid #23262f; box-shadow:0 8px 24px rgba(0,0,0,.28); }
+  nav { backdrop-filter:saturate(140%) blur(14px); background:rgba(21,23,29,.82); }
+  nav button { transition:color .15s, transform .1s; }
+  nav button.active .ico { transform:translateY(-1px) scale(1.08); }
+  a { color:inherit; }
+
+  /* ---- timeline hero ---- */
+  .eyebrow { font-size:11px; letter-spacing:.9px; text-transform:uppercase; color:var(--muted); }
+  .hero { background:linear-gradient(135deg,#20233492,#181a22), var(--card); border:1px solid #2a2d3a; }
+  .herotop { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin:6px 0 12px; }
+  .heromood { font-size:19px; font-weight:700; }
+  .herochip { background:var(--card2); border-radius:999px; padding:6px 12px; font-size:12px; color:var(--muted); white-space:nowrap; }
+  .bar.big { height:12px; }
+
+  /* ---- vertical timeline ---- */
+  .tline { position:relative; }
+  .tnode { display:flex; gap:14px; padding-bottom:16px; }
+  .tnode:last-child { padding-bottom:0; }
+  .rail { position:relative; width:14px; flex:none; display:flex; justify-content:center; }
+  .rail::before { content:''; position:absolute; top:18px; bottom:-16px; width:2px; background:#2a2d35; }
+  .tnode:last-child .rail::before { display:none; }
+  .mk { width:14px; height:14px; border-radius:50%; margin-top:4px; z-index:1; box-shadow:0 0 0 4px var(--card), 0 0 12px rgba(124,92,255,.25); }
+  .tbody { flex:1; min-width:0; background:var(--card2); border-radius:14px; padding:11px 13px; transition:transform .12s; }
+  .tbody:hover { transform:translateX(2px); }
+
+  /* ---- support / toolkit card ---- */
+  .support.warm { border:1px solid rgba(124,92,255,.40); background:linear-gradient(180deg, rgba(124,92,255,.12), var(--card)); }
+  .seclabel { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); margin:16px 2px 9px; }
+  .link { display:flex; align-items:center; gap:12px; padding:11px 12px; background:var(--card2); border-radius:12px; margin-bottom:8px; text-decoration:none; color:var(--text); transition:transform .12s, background .2s; }
+  .link:hover { background:#2b2f39; transform:translateY(-1px); }
+  .link:last-child { margin-bottom:0; }
+  .linkico { font-size:20px; flex:none; }
+  .chev { color:var(--muted); font-size:15px; flex:none; }
+  .breathe { display:flex; align-items:center; gap:14px; background:var(--card2); border-radius:14px; padding:14px; }
+  .breathe .ball { width:46px; height:46px; border-radius:50%; flex:none; transform:scale(.62);
+                   background:radial-gradient(circle at 35% 30%, #b6a2ff, #6b4cff); box-shadow:0 0 26px rgba(124,92,255,.5); }
+  .breathe .ball.run { animation:boxbreath 16s ease-in-out infinite; }
+  @keyframes boxbreath { 0%{transform:scale(.62)} 25%{transform:scale(1)} 50%{transform:scale(1)} 75%{transform:scale(.62)} 100%{transform:scale(.62)} }
 </style>
 </head>
 <body>
@@ -77,10 +119,7 @@
 
   <!-- TIMELINE -->
   <section id="tab-timeline" class="hidden">
-    <div class="card">
-      <h2 id="tlHead">Today's moments</h2>
-      <div id="timeline"><div class="muted">No moments yet. Record a check-in.</div></div>
-    </div>
+    <div id="timelineRoot"><div class="card muted">Loading your day…</div></div>
   </section>
 
   <!-- FRIENDS -->
@@ -251,20 +290,108 @@ function card(snap){
 function renderLastCard(snap){ document.getElementById('lastCard').innerHTML=card(snap); }
 
 // ---- timeline ----
+// Curated, real links. "Reads" help process feelings; "distractions" gently pull
+// attention elsewhere for a few minutes when emotions run hot.
+const RESOURCES={
+  reads:[
+    {icon:'🧠', name:'Greater Good · UC Berkeley', desc:'Science-backed ways to work with hard feelings', url:'https://greatergood.berkeley.edu/topic/mindfulness'},
+    {icon:'🌿', name:'Headspace — Articles', desc:'Calming anxiety, stress, and a racing mind', url:'https://www.headspace.com/articles'},
+    {icon:'💬', name:'Mind — Coping & support', desc:'Practical guides for tough emotional moments', url:'https://www.mind.org.uk/information-support/'},
+    {icon:'📓', name:'Verywell Mind — Emotions', desc:'How to sit with and move through what you feel', url:'https://www.verywellmind.com/emotions-4157191'},
+  ],
+  distractions:[
+    {icon:'🌧️', name:'A Soft Murmur', desc:'Mix rain & ambient sound until things settle', url:'https://asoftmurmur.com'},
+    {icon:'🪟', name:'WindowSwap', desc:"Look out of a stranger's window, somewhere", url:'https://www.window-swap.com'},
+    {icon:'✏️', name:'Quick, Draw!', desc:'Doodle against an AI for 20 silly seconds', url:'https://quickdraw.withgoogle.com'},
+    {icon:'🎲', name:'The Useless Web', desc:'Teleport to a pointless, delightful corner', url:'https://theuselessweb.com'},
+  ]
+};
+function moodTone(v){
+  if(v>=0.25)return['😄','a bright day'];
+  if(v>=0.03)return['🙂','a steady day'];
+  if(v>=-0.25)return['😕','a mixed day'];
+  return['😔','a heavy day'];
+}
+function heroCard(avg){
+  const [em,word]=moodTone(avg);
+  return `<div class="card hero">
+    <div class="eyebrow">Your day so far</div>
+    <div class="herotop">
+      <div class="heromood">${em} It's been ${word}</div>
+      <span class="herochip">avg ${avg>=0?'+':''}${avg.toFixed(2)}</span>
+    </div>
+    <div class="bar big"><div style="width:${(avg+1)/2*100}%;background:${valColor(avg)}"></div></div>
+  </div>`;
+}
+function linkRow(r){
+  return `<a class="link" href="${r.url}" target="_blank" rel="noopener noreferrer">
+    <span class="linkico">${r.icon}</span>
+    <span class="grow"><div class="title" style="font-size:14px">${r.name}</div><div class="time">${r.desc}</div></span>
+    <span class="chev">↗</span>
+  </a>`;
+}
+function supportCard(heavy){
+  return `<div class="card support ${heavy?'warm':''}">
+    <h2 style="margin-bottom:12px">${heavy?"Today's been heavy — be gentle with yourself 💜":"Wellbeing toolkit 🧰"}</h2>
+    <div class="breathe">
+      <div class="ball" id="breatheBall"></div>
+      <div class="grow"><div class="title" id="breatheLabel">Take a breath</div><div class="time">Box breathing · in 4 · hold 4 · out 4 · hold 4</div></div>
+      <button class="kudos" id="breatheBtn" onclick="toggleBreathe(this)">Start</button>
+    </div>
+    <div class="seclabel">Reads that help</div>
+    ${RESOURCES.reads.map(linkRow).join('')}
+    <div class="seclabel">A small distraction</div>
+    ${RESOURCES.distractions.map(linkRow).join('')}
+  </div>`;
+}
+let breatheTimer=null;
+function toggleBreathe(btn){
+  const ball=document.getElementById('breatheBall'), label=document.getElementById('breatheLabel');
+  if(breatheTimer){ clearInterval(breatheTimer); breatheTimer=null; ball.classList.remove('run'); label.textContent='Take a breath'; btn.textContent='Start'; return; }
+  ball.classList.add('run'); btn.textContent='Stop';
+  const phases=['Breathe in…','Hold…','Breathe out…','Hold…']; let i=0; label.textContent=phases[0];
+  breatheTimer=setInterval(()=>{
+    const lbl=document.getElementById('breatheLabel');
+    if(!lbl){ clearInterval(breatheTimer); breatheTimer=null; return; }   // timeline re-rendered
+    i=(i+1)%phases.length; lbl.textContent=phases[i];
+  },4000);
+}
 async function loadTimeline(){
+  if(breatheTimer){ clearInterval(breatheTimer); breatheTimer=null; }
+  const root=document.getElementById('timelineRoot');
   try{
     const snaps=await fetch(API+'/checkins?user_id='+USER).then(r=>r.json());
-    document.getElementById('tlHead').textContent=`${snaps.length} moments today`;
-    const el=document.getElementById('timeline');
-    if(!snaps.length){ el.innerHTML='<div class="muted">No moments yet. Record a check-in.</div>'; return; }
+    if(!snaps.length){
+      root.innerHTML=`<div class="card center muted" style="padding:34px 16px">
+        <div style="font-size:42px">🎭</div>
+        <div style="margin-top:8px">No moments yet today.</div>
+        <div class="time" style="margin-top:4px">Record a check-in and your day will unfold here.</div>
+      </div>`+supportCard(false);
+      return;
+    }
     snaps.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));
-    el.innerHTML=snaps.map(s=>`<div class="row">
-      <div class="emoji">${emoji(s.emotion_label)}</div>
-      <div class="grow"><div class="title">${s.emotion_label}</div><div class="time">${s.summary||s.context_tag}</div></div>
-      <div class="time">${hm(s.timestamp)}</div>
-      <div class="dot" style="background:${valColor(s.valence)}"></div>
-    </div>`).join('');
-  }catch(e){ document.getElementById('timeline').innerHTML='<div class="muted">Backend unreachable.</div>'; }
+    const avg=snaps.reduce((s,x)=>s+(x.valence||0),0)/snaps.length;
+    const heavy=avg<0;
+    const nodes=snaps.map(s=>`
+      <div class="tnode">
+        <div class="rail"><div class="mk" style="background:${valColor(s.valence)}"></div></div>
+        <div class="tbody">
+          <div class="row" style="border:none;padding:0">
+            <div class="emoji" style="font-size:22px">${emoji(s.emotion_label)}</div>
+            <div class="grow"><div class="title">${s.emotion_label}</div><div class="time">${s.summary||s.context_tag||''}</div></div>
+            <div class="time">${hm(s.timestamp)}</div>
+          </div>
+        </div>
+      </div>`).join('');
+    const moments=`<div class="card">
+      <div class="row" style="border:none;padding:0;margin-bottom:14px">
+        <h2 class="grow" style="margin:0">Today's moments</h2>
+        <span class="herochip">${snaps.length}</span>
+      </div>
+      <div class="tline">${nodes}</div>
+    </div>`;
+    root.innerHTML = heroCard(avg) + (heavy?supportCard(true):'') + moments + (heavy?'':supportCard(false));
+  }catch(e){ root.innerHTML='<div class="card muted">Backend unreachable.</div>'; }
 }
 
 // ---- stats ----
