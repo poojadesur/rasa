@@ -20,6 +20,8 @@ struct RootView: View {
                 .tabItem { Label("Check in", systemImage: "mic.circle.fill") }
             TimelineView()
                 .tabItem { Label("Timeline", systemImage: "list.bullet") }
+            FriendsView()
+                .tabItem { Label("Friends", systemImage: "person.2.fill") }
             DashboardView()
                 .tabItem { Label("Stats", systemImage: "chart.xyaxis.line") }
             DebriefView()
