@@ -91,6 +91,7 @@ class Debrief(BaseModel):
     audio_url: Optional[str] = None
     video_url: Optional[str] = None
     share_url: Optional[str] = None
+    conversation_url: Optional[str] = None
     error: Optional[str] = None
     created_at: str = ""
     updated_at: str = ""
