@@ -51,6 +51,12 @@
   video { width:100%; border-radius:14px; background:#000; }
   .script { white-space:pre-wrap; line-height:1.5; }
   .scroll-x { overflow-x:auto; white-space:nowrap; }
+  .avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; color:#fff; flex:none; }
+  .streak { display:flex; align-items:center; gap:4px; font-weight:600; font-size:14px; }
+  .kudos { background:var(--card2); color:var(--muted); padding:8px 14px; border-radius:999px; font-size:13px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+  .kudos.on { color:var(--accent); }
+  .friendfeel { display:flex; align-items:center; gap:10px; margin:12px 0 10px; }
+  .cardfoot { display:flex; align-items:center; justify-content:space-between; border-top:1px solid #2a2d35; padding-top:10px; }
 </style>
 </head>
 <body>
@@ -77,6 +83,11 @@
     </div>
   </section>
 
+  <!-- FRIENDS -->
+  <section id="tab-friends" class="hidden">
+    <div id="friends"></div>
+  </section>
+
   <!-- STATS -->
   <section id="tab-stats" class="hidden">
     <div id="stats"><div class="card muted">Log a few check-ins to build your report.</div></div>
@@ -94,6 +105,7 @@
 <nav>
   <button data-tab="checkin" class="active"><span class="ico">🎙️</span>Check in</button>
   <button data-tab="timeline"><span class="ico">📜</span>Timeline</button>
+  <button data-tab="friends"><span class="ico">👥</span>Friends</button>
   <button data-tab="stats"><span class="ico">📊</span>Stats</button>
   <button data-tab="debrief"><span class="ico">🎬</span>Debrief</button>
 </nav>
@@ -117,11 +129,46 @@ function hm(ts){ const d=new Date(ts); return d.toLocaleTimeString([], {hour:'nu
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');
-  ['checkin','timeline','stats','debrief'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
+  ['checkin','timeline','friends','stats','debrief'].forEach(t=>document.getElementById('tab-'+t).classList.add('hidden'));
   document.getElementById('tab-'+b.dataset.tab).classList.remove('hidden');
   if(b.dataset.tab==='timeline') loadTimeline();
+  if(b.dataset.tab==='friends') loadFriends();
   if(b.dataset.tab==='stats') loadStats();
 });
+
+// ---- friends (placeholder roster — swap for real friends API later) ----
+const FRIENDS=[
+  {name:"Abhi",    feeling:"Excitement", valence: 0.62, streak:12, ago:"8m ago",  kudos:3},
+  {name:"Pooja",   feeling:"Calm",       valence: 0.34, streak:27, ago:"1h ago",  kudos:7},
+  {name:"Patrick", feeling:"Anxiety",    valence:-0.41, streak:4,  ago:"3h ago",  kudos:1},
+];
+function initials(name){ const p=name.trim().split(/\s+/); return ((p[0]?.[0]||'')+(p[1]?.[0]||'')).toUpperCase(); }
+function loadFriends(){
+  document.getElementById('friends').innerHTML=FRIENDS.map((f,i)=>`
+    <div class="card">
+      <div class="row" style="border:none;padding:0">
+        <div class="avatar" style="background:${valColor(f.valence)}">${initials(f.name)}</div>
+        <div class="grow"><div class="title">${f.name}</div><div class="time">${f.ago} · ${f.streak}-day streak</div></div>
+        <div class="streak">🔥 ${f.streak}</div>
+      </div>
+      <div class="friendfeel">
+        <div class="emoji">${emoji(f.feeling)}</div>
+        <div class="grow">
+          <div style="font-size:14px;margin-bottom:6px">Felt ${f.feeling.toLowerCase()}</div>
+          <div class="bar"><div style="width:${(f.valence+1)/2*100}%;background:${valColor(f.valence)}"></div></div>
+        </div>
+        <div class="dot" style="background:${valColor(f.valence)}"></div>
+      </div>
+      <div class="cardfoot">
+        <button class="kudos" data-i="${i}" onclick="toggleKudos(this)">👏 <span>${f.kudos}</span></button>
+        <span class="time">Kudos</span>
+      </div>
+    </div>`).join('');
+}
+function toggleKudos(btn){
+  const f=FRIENDS[+btn.dataset.i], on=btn.classList.toggle('on');
+  btn.querySelector('span').textContent = f.kudos + (on?1:0);
+}
 
 // ---- recording ----
 let mediaRecorder, chunks=[], recording=false;

@@ -14,6 +14,7 @@
 		5B4DA83E7FF0849A9C5BC000 /* RasaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B41F1DF778FED68AB484E3C /* RasaApp.swift */; };
 		6BA4C81B6FCAA37D2AF348D0 /* TimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A8470E6BF2CFDBEFA1B73E9 /* TimelineView.swift */; };
 		78F73840B26BA31997F1C0B0 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10FF66C38DE004DB4BFF1FCA /* DashboardView.swift */; };
+		9A3B60BA82C4B4C357F0A194 /* FriendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E4EF3C5EFA13B178B91FD4 /* FriendsView.swift */; };
 		B8915D6DE48B881841F85C08 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F17F893D6FB38E8F56FC2D /* Models.swift */; };
 		C5246F958A5BDAF3EB73B16C /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECBF6F58C2F10FABE420D281 /* Components.swift */; };
 		C574BC11C6A7542DE6DC1A05 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A0D7E9440E963D2EBB407EA /* APIClient.swift */; };
@@ -31,6 +32,7 @@
 		5A8639194AB52E0F63E33AFB /* DebriefView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebriefView.swift; sourceTree = "<group>"; };
 		8BC91D56C242A178E44D56E5 /* HomeRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeRecordView.swift; sourceTree = "<group>"; };
 		9A0D7E9440E963D2EBB407EA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		C4E4EF3C5EFA13B178B91FD4 /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
 		DC5F0EBA9E32504F2A2535E5 /* Rasa.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Rasa.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E43CE8F2A7D013A56B1BE06C /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		E4F17F893D6FB38E8F56FC2D /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -57,6 +59,7 @@
 				4420B7BCDD437A616E7D4707 /* Config.swift */,
 				10FF66C38DE004DB4BFF1FCA /* DashboardView.swift */,
 				5A8639194AB52E0F63E33AFB /* DebriefView.swift */,
+				C4E4EF3C5EFA13B178B91FD4 /* FriendsView.swift */,
 				8BC91D56C242A178E44D56E5 /* HomeRecordView.swift */,
 				F0F88E8A0969F86C28D408D4 /* Info.plist */,
 				E4F17F893D6FB38E8F56FC2D /* Models.swift */,
@@ -137,6 +140,7 @@
 				3A84A5A8A61A745375F9ACFF /* Config.swift in Sources */,
 				78F73840B26BA31997F1C0B0 /* DashboardView.swift in Sources */,
 				566F2B059396E471CF34273A /* DebriefView.swift in Sources */,
+				9A3B60BA82C4B4C357F0A194 /* FriendsView.swift in Sources */,
 				45E7C7A9435852146DEF54FE /* HomeRecordView.swift in Sources */,
 				B8915D6DE48B881841F85C08 /* Models.swift in Sources */,
 				5B4DA83E7FF0849A9C5BC000 /* RasaApp.swift in Sources */,

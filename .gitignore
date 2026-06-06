@@ -24,3 +24,5 @@ ios/build/
 
 # ---- macOS ----
 .DS_Store
+ios/*.xcodeproj/
+ios/Rasa 2.xcodeproj/
